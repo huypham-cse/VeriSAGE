@@ -19,8 +19,7 @@ python3 -m unittest discover -s tests   # C4 regression tests
 
 `check_results.py` compares selected committed `results/*.json` values with
 expectations embedded in the script and prints PASS/FAIL per check. It does not
-parse the manuscript or rerun the experiments. CI runs the same smoke
-test on every push (`.github/workflows/smoke.yml`).
+parse the manuscript or rerun the experiments.
 
 ## Known limitations
 
