@@ -14,6 +14,7 @@ from `results/` inside this repository.
 ```bash
 pip install -r requirements.txt   # numpy + matplotlib (z3-solver optional)
 bash run_smoke.sh                 # verifier on 60 labelled tasks + check_results.py
+python3 -m unittest discover -s tests   # C4 regression tests
 ```
 
 `check_results.py` compares selected committed `results/*.json` values with
@@ -23,8 +24,8 @@ test on every push (`.github/workflows/smoke.yml`).
 
 ## Known limitations
 
-The current prototype has a confirmed C4 dependency-propagation defect and a
-narrower C1 check than the formal design. The synthetic smoke test and stored
+C4 now propagates declared dependencies (fixed after the first release); C1 is
+still narrower than the formal design. The synthetic smoke test and stored
 result checks do not establish general verifier soundness. See
 [KNOWN_LIMITATIONS.md](KNOWN_LIMITATIONS.md) for the reproducible case and
 the distinctions between implementation, offline simulations, and design claims.
@@ -55,6 +56,7 @@ the distinctions between implementation, offline simulations, and design claims.
 | `exp2`–`exp17` | Further experiments (one JSON each in `results/`) |
 | `qws_data.py`, `data/` | Real QWS v2.0 dataset and loader (see `data/PROVENANCE.md`) |
 | `check_results.py`, `run_smoke.sh` | Claim checks and smoke test |
+| `tests/` | C4 regression tests and recorded verdicts |
 | `appendix.pdf` | Extended report: proofs, LTL_f semantics, extra SLA bounds |
 
 ## Paper claim → script → result file
@@ -83,6 +85,7 @@ the distinctions between implementation, offline simulations, and design claims.
 ```bash
 python3 experiments_core.py                         # no LLM
 python3 exp7_repair_ablation.py                      # no LLM (same for exp2-exp14, exp17)
+VERISAGE_QWS=1 python3 exp10_qos_baseline.py         # QWS latencies, as in the stored result
 python3 experiments_llm.py qwen2.5:7b 20 6 hard      # needs `ollama serve` + the model
 python3 exp1_baselines.py qwen2.5:7b 1,2,3 4         # stratified suite, 3 seeds, T=4
 python3 make_real_figures.py                          # writes figures/ from results/

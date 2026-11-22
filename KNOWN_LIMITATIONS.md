@@ -4,12 +4,15 @@ Status at publication, 5 November 2026. This package preserves the experimental
 prototype and stored results used by the paper. The following findings remain
 open. The smoke tests establish agreement on their tested synthetic cases.
 
-## C4 does not propagate declared dependencies
+## C4 dependency propagation (fixed)
 
-`Service.taint` declares input-to-output dependencies, but `verify` and
-`verify_all` do not propagate them. An output without an explicit field label
-is treated as public, even when it depends on a secret input. Neither API
-therefore implements the dependency-reachability guarantee of the formal design.
+`Service.taint` declares input-to-output dependencies. In the version published
+on 5 November 2026, `verify` and `verify_all` did not propagate them, so an
+output without an explicit field label was treated as public even when it
+depended on a secret input. Both paths now share `core.c4_update_levels`: a
+derived output takes the most sensitive level of its declared inputs, an
+explicit label can raise but not lower that level, and declassifiers apply
+afterwards. Services that declare no `taint` behave as before.
 
 Run this example from the repository root:
 
@@ -25,10 +28,14 @@ print(verify([copy, sink], goal))
 print(verify_all([copy, sink], goal))
 ```
 
-The current code returns `ok=True` and no witnesses. The declared secret flow
-should be rejected. No service is executed by this example. General privacy
-enforcement requires correcting both verification paths and validating them
-against independently labelled dependency graphs.
+The published version returned `ok=True` and no witnesses; the current code
+rejects the plan with a `[C4]` witness. `tests/test_c4_taint.py` covers this
+case, multi-hop flows, joins, explicit labels, declassifiers before and after
+sinks, and benign plans, and checks that 2,904 previously recorded verdicts are
+unchanged. The check assumes complete declared flows: undeclared and implicit
+flows are still not detected, and these tests do not establish general
+soundness. Validation against independently labelled dependency graphs remains
+open.
 
 ## Implementation and simulation scope
 
@@ -50,6 +57,6 @@ condition to the DAG Hoeffding expression, and identifies the C1+C2 experiment
 as an internal ablation rather than an evaluation of Clover. It also labels the
 dependency experiments as separate synthetic simulations.
 
-These are documentation and mathematical-statement corrections. The prototype's
-C4 propagation defect remains unresolved, and no new experiments or verifier
-algorithm changes are claimed. Matching stored numbers does not resolve it.
+These are documentation and mathematical-statement corrections. The only
+verifier algorithm change is the C4 propagation fix above; rerunning the
+model-free experiments with it leaves every stored non-timing value unchanged.
