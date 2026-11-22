@@ -23,7 +23,7 @@ from __future__ import annotations
 import json, os, time
 from typing import List, Tuple
 import numpy as np
-from core import Service, Goal, hoeffding_bound, LEVELS
+from core import Service, Goal, hoeffding_bound, LEVELS, c4_update_levels
 
 REPS_INNER = 2000           # inner repetitions per timing sample
 REPS_OUTER = 7              # outer samples -> mean/sd
@@ -73,8 +73,7 @@ def verify_timed(plan: List[Service], goal: Goal):
     t0 = time.perf_counter()
     eff = dict(goal.init_level)
     for s in plan:
-        for f, lv in s.field_level.items(): eff[f] = lv
-        for f in s.declassifies: eff[f] = "public"
+        c4_update_levels(eff, s)     # same propagation as core.verify
         if s.sink_field is not None:
             _ = LEVELS.get(eff.get(s.sink_field, "public"), 0) > LEVELS.get(s.sink_clearance, 3)
     t["C4"] = time.perf_counter() - t0

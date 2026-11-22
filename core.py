@@ -74,6 +74,26 @@ def hoeffding_bound(mu: float, ubs: List[float], budget: float) -> float:
     return math.exp(-2.0 * (budget - mu) ** 2 / denom)
 
 
+def _level_rank(lv: str) -> int:
+    return LEVELS.get(lv, 0)
+
+
+def c4_update_levels(eff: Dict[str, str], s: Service) -> None:
+    """Advance C4's effective field levels over one service, before its sink check.
+
+    A derived output (s.taint: out_field -> in_fields) takes the join of its
+    inputs' levels; an explicit field_level can raise that level but not lower
+    it; declassifiers then lower their fields to public. Services without taint
+    behave exactly as before. Shared by verify and verify_all."""
+    new = dict(s.field_level)
+    for out, ins in s.taint.items():
+        derived = max((eff.get(i, "public") for i in ins), key=_level_rank, default="public")
+        new[out] = max(derived, new.get(out, "public"), key=_level_rank)
+    eff.update(new)          # all inputs are read before any output is written
+    for f in s.declassifies:
+        eff[f] = "public"
+
+
 def verify(plan: List[Service], goal: Goal) -> Verdict:
     """Run C1-C5 in increasing cost order; short-circuit on first failure."""
     declared = 0   # count of declared hard constraints (for proof coverage)
@@ -148,13 +168,10 @@ def verify(plan: List[Service], goal: Goal) -> Verdict:
         discharged += 1
 
     # ---- C4 explicit-flow: no high field reaches a lower-clearance sink ----
-    # effective level, lowered by declassifiers as we walk the plan.
+    # effective level: propagated along taint, lowered by declassifiers.
     eff: Dict[str, str] = dict(goal.init_level)
     for s in plan:
-        for f, lv in s.field_level.items():
-            eff[f] = lv
-        for f in s.declassifies:
-            eff[f] = "public"
+        c4_update_levels(eff, s)
         if s.sink_field is not None:
             declared += 1
             fl = LEVELS.get(eff.get(s.sink_field, "public"), 0)
@@ -224,8 +241,7 @@ def verify_all(plan: List[Service], goal: Goal) -> List[str]:
             w.append(f"[C3] forbidden action '{a}' present")
     eff: Dict[str, str] = dict(goal.init_level)      # C4 explicit-flow
     for s in plan:
-        for f, lv in s.field_level.items(): eff[f] = lv
-        for f in s.declassifies: eff[f] = "public"
+        c4_update_levels(eff, s)
         if s.sink_field is not None:
             if LEVELS.get(eff.get(s.sink_field, "public"), 0) > LEVELS.get(s.sink_clearance, 3):
                 w.append(f"[C4] '{s.sink_field}' reaches sink '{s.name}' un-declassified")
